@@ -15,9 +15,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Expand tested source tree
+      - name: Reconstruct and verify tested source
         run: |
-          tar -xzf .bootstrap/source.tar.gz -C .
+          cat .bootstrap/part-* | base64 -d > /tmp/source.tar.gz
+          echo "8df1fc446b039f42755c2e3b4c8a32987900990ceaa33efc4c242d1f38e71ffb  /tmp/source.tar.gz" | sha256sum -c -
+          tar -tzf /tmp/source.tar.gz >/dev/null
+      - name: Publish source tree
+        run: |
+          tar -xzf /tmp/source.tar.gz -C .
           rm -rf .bootstrap
           rm -f .github/workflows/bootstrap.yml
       - name: Commit complete project
