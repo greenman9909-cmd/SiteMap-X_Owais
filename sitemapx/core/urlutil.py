@@ -9,7 +9,7 @@ from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 try:
     import tldextract
-except Exception:
+except Exception:  # pragma: no cover - optional runtime fallback
     tldextract = None
 
 from .._compat import fallback_registrable_domain
@@ -49,6 +49,7 @@ def normalize_url(url: str, base: str | None = None) -> str | None:
         netloc = f"{host}:{port}"
     path = re.sub(r"/{2,}", "/", p.path or "/")
     query = urlencode(sorted(parse_qsl(p.query, keep_blank_values=True)))
+    # Preserve common SPA hash routes, discard ordinary fragments.
     fragment = p.fragment if p.fragment.startswith(("/", "!")) else ""
     return urlunsplit((p.scheme.lower(), netloc, path, query, fragment))
 

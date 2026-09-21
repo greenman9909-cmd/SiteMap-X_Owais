@@ -61,6 +61,7 @@ class Config:
             value = data.get(key)
             if value is not None:
                 data[key] = str(value)
+        # Reports should describe authentication mechanisms without copying secrets.
         if data.get("cookie"):
             data["cookie"] = "<configured>"
         if data.get("basic"):
@@ -76,6 +77,7 @@ class Config:
         return data
 
 
+# Backward-compatible name for earlier internal modules.
 CrawlConfig = Config
 
 

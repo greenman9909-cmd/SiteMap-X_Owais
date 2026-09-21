@@ -55,6 +55,8 @@ class AioSQLiteShim:
         return AsyncSQLiteConnection(path)
 
 
+# A pragmatic public-suffix fallback for same-domain scoping when tldextract is not installed.
+# It intentionally covers common multi-label public suffixes without trying to replace the PSL.
 _COMMON_TWO_LEVEL_SUFFIXES = {
     "co.uk", "org.uk", "ac.uk", "gov.uk",
     "com.au", "net.au", "org.au", "edu.au",
@@ -69,6 +71,7 @@ def fallback_registrable_domain(url: str) -> str:
     host = (urlsplit(url).hostname or "").strip(".").lower()
     if not host:
         return ""
+    # IPs and localhost-like names should remain literal.
     try:
         import ipaddress
         ipaddress.ip_address(host)

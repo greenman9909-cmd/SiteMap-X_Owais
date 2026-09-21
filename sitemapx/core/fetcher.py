@@ -60,7 +60,7 @@ def _content_type(headers: dict[str, str]) -> str:
 
 
 def _redirects_from_aiohttp(resp: aiohttp.ClientResponse) -> list[tuple[str, str, int]]:
-    hops = []
+    hops: list[tuple[str, str, int]] = []
     history = list(resp.history)
     for idx, previous in enumerate(history):
         target = history[idx + 1].url if idx + 1 < len(history) else resp.url
@@ -69,7 +69,7 @@ def _redirects_from_aiohttp(resp: aiohttp.ClientResponse) -> list[tuple[str, str
 
 
 def _redirects_from_httpx(resp: httpx.Response) -> list[tuple[str, str, int]]:
-    hops = []
+    hops: list[tuple[str, str, int]] = []
     history = list(resp.history)
     for idx, previous in enumerate(history):
         target = history[idx + 1].url if idx + 1 < len(history) else resp.url
@@ -77,10 +77,18 @@ def _redirects_from_httpx(resp: httpx.Response) -> list[tuple[str, str, int]]:
     return hops
 
 
-async def fetch_url(session: aiohttp.ClientSession, url: str, config: Config, scheduler: RateScheduler, extra_delay: float = 0.0, http2_client: httpx.AsyncClient | None = None) -> FetchResult:
+async def fetch_url(
+    session: aiohttp.ClientSession,
+    url: str,
+    config: Config,
+    scheduler: RateScheduler,
+    extra_delay: float = 0.0,
+    http2_client: httpx.AsyncClient | None = None,
+) -> FetchResult:
     started = time.perf_counter()
     fetched_at = datetime.now(timezone.utc).isoformat()
     last_error = "fetch failed"
+
     for attempt in range(4):
         await scheduler.wait(url, extra_delay if attempt == 0 else 0.0)
         try:
@@ -95,8 +103,24 @@ async def fetch_url(session: aiohttp.ClientSession, url: str, config: Config, sc
                         scheduler.backoff(url, delay)
                         await asyncio.sleep(delay)
                         continue
-                return FetchResult(url=url, final_url=str(response.url), status=status, headers=headers, body=body, content_type=_content_type(headers), redirects=_redirects_from_httpx(response), fetched_at=fetched_at, elapsed=time.perf_counter() - started)
-            async with session.get(url, allow_redirects=True, max_redirects=config.redirect_limit, proxy=config.proxy) as response:
+                return FetchResult(
+                    url=url,
+                    final_url=str(response.url),
+                    status=status,
+                    headers=headers,
+                    body=body,
+                    content_type=_content_type(headers),
+                    redirects=_redirects_from_httpx(response),
+                    fetched_at=fetched_at,
+                    elapsed=time.perf_counter() - started,
+                )
+
+            async with session.get(
+                url,
+                allow_redirects=True,
+                max_redirects=config.redirect_limit,
+                proxy=config.proxy,
+            ) as response:
                 body = await response.read()
                 headers = dict(response.headers)
                 status = int(response.status)
@@ -106,7 +130,17 @@ async def fetch_url(session: aiohttp.ClientSession, url: str, config: Config, sc
                         scheduler.backoff(url, delay)
                         await asyncio.sleep(delay)
                         continue
-                return FetchResult(url=url, final_url=str(response.url), status=status, headers=headers, body=body, content_type=_content_type(headers), redirects=_redirects_from_aiohttp(response), fetched_at=fetched_at, elapsed=time.perf_counter() - started)
+                return FetchResult(
+                    url=url,
+                    final_url=str(response.url),
+                    status=status,
+                    headers=headers,
+                    body=body,
+                    content_type=_content_type(headers),
+                    redirects=_redirects_from_aiohttp(response),
+                    fetched_at=fetched_at,
+                    elapsed=time.perf_counter() - started,
+                )
         except (aiohttp.ClientError, httpx.HTTPError, asyncio.TimeoutError) as exc:
             last_error = f"{type(exc).__name__}: {exc}"
             if attempt < 3:
@@ -117,9 +151,28 @@ async def fetch_url(session: aiohttp.ClientSession, url: str, config: Config, sc
         except Exception as exc:
             last_error = f"{type(exc).__name__}: {exc}"
             break
-    return FetchResult(url=url, final_url=url, status=0, headers={}, body=b"", content_type="", error=last_error, fetched_at=fetched_at, elapsed=time.perf_counter() - started)
+
+    return FetchResult(
+        url=url,
+        final_url=url,
+        status=0,
+        headers={},
+        body=b"",
+        content_type="",
+        error=last_error,
+        fetched_at=fetched_at,
+        elapsed=time.perf_counter() - started,
+    )
 
 
-async def fetch(session: aiohttp.ClientSession, url: str, limiter: RateScheduler, *, proxy: str | None = None, retries: int = 3) -> FetchResult:
+# Compatibility wrapper retained for modules/tests that imported the older name.
+async def fetch(
+    session: aiohttp.ClientSession,
+    url: str,
+    limiter: RateScheduler,
+    *,
+    proxy: str | None = None,
+    retries: int = 3,
+) -> FetchResult:
     config = Config(url=url, proxy=proxy)
     return await fetch_url(session, url, config, limiter)

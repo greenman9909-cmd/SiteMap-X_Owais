@@ -45,4 +45,5 @@ class RateScheduler:
         self._backoff_until[host] = max(self._backoff_until.get(host, 0.0), time.monotonic() + max(0.0, seconds))
 
 
+# Compatibility alias.
 RateLimiter = RateScheduler

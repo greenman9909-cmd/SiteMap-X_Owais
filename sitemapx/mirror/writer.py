@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Iterable
 import html
 
 from ..core.urlutil import local_path_for
