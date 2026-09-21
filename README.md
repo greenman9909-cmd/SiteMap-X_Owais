@@ -16,19 +16,60 @@
 
 SiteMap-X takes one seed URL and builds a structured picture of a website: the pages and assets that make up the frontend, routes and backend endpoints referenced by the client, technology fingerprints, forms, external hosts, optional GraphQL/OpenAPI metadata, and a locally browsable mirror. Crawl state is stored in SQLite so larger jobs can be resumed.
 
-## Why SiteMap-X exists
+## Why SiteMap-X exists & Key Benefits
 
 Modern websites are often spread across HTML, CSS, JavaScript bundles, lazy-loaded chunks, service workers, runtime XHR/fetch calls, route manifests, sitemaps, API descriptions, and browser-only network activity. Looking at a single page source misses much of that surface.
 
-SiteMap-X combines those discovery sources into one workflow so you can:
+SiteMap-X bridges this gap by turning raw client artifacts into a complete architectural map.
 
-- **Understand an unfamiliar web application faster** by mapping pages, assets, routes, forms, APIs, WebSockets, external hosts, and framework hints in one report.
-- **Create an offline frontend reference** with deterministic local paths and rewritten HTML/CSS links.
-- **Inventory backend integration points** found in HTML, forms, JavaScript, rendered browser traffic, OpenAPI documents, and GraphQL metadata.
-- **Compare deployments or releases** by diffing endpoint inventories from two crawls.
-- **Inspect JavaScript-heavy sites** with optional Playwright rendering and runtime request capture.
-- **Resume large crawls** from SQLite instead of restarting after interruption.
-- **Export results for other tools** as HTML, JSON, Markdown, text lists, and SQLite data.
+| Benefit | How It Helps |
+|---|---|
+| **Reverse Engineering & Code Audits** | Rapidly map the architecture, route structure, and third-party integrations of any unknown web application without needing backend source code. |
+| **Complete API Surface Mapping** | Identify internal backend endpoints consumed by the client (tRPC procedures, REST paths, GraphQL endpoints) for security audits, migrations, or contract testing. |
+| **Release & Deployment Diffing** | Run `--diff-against` between builds to see what new routes, assets, or API endpoints changed between releases. |
+| **Offline Archiving & UI Prototyping** | Save complete snapshots of landing pages or documentation sites for offline reference with rewritten relative links. |
+| **Zero-Friction Discovery** | Requires only a single seed URL (`sitemapx https://target.com --out ./out`) to perform discovery, fingerprinting, mirroring, and report generation in one pass. |
+
+---
+
+## What SiteMap-X Allows You To Do
+
+1. **Deep Endpoint & API Discovery (tRPC / REST / GraphQL)**
+   - Automatically parses JavaScript bundles, route manifests, and source maps to extract client-side API routes, tRPC procedures, and backend endpoints (e.g. `api/trpc/...`, `api/...`).
+   - Categorizes each route by type: *Navigable Page*, *API Endpoint*, *Static Asset*, or *Form Target*, complete with discovery evidence (bundle ref, route literal, or runtime capture).
+
+2. **Offline Frontend Mirroring**
+   - Downloads HTML, CSS, JavaScript, images, and fonts while rewriting internal references to relative local paths so you can browse the entire site offline directly from disk.
+
+3. **Multi-Vector Technology Fingerprinting**
+   - Detects web servers, frameworks, CDNs, analytics providers, payment processors, and error tracking platforms with confidence scores based on headers, script hashes, DOM signatures, and bundle patterns.
+
+4. **Headless Browser Rendering (Playwright Chromium)**
+   - Optionally spins up headless Chromium to execute client-side JavaScript, capture dynamic runtime network requests and WebSockets, record console errors, and generate full-page screenshots.
+
+5. **Resumable SQLite Crawl Engine**
+   - Every URL, page, endpoint, and asset is tracked in a WAL-mode SQLite database (`crawl.sqlite3`), allowing large multi-thousand page crawls to pause and resume seamlessly.
+
+6. **Rich Interactive & Machine-Readable Reports**
+   - Generates an interactive single-page HTML dashboard (`report.html`) with filterable and searchable tables, as well as JSON, Markdown, and plaintext endpoint listings.
+
+---
+
+## 🧪 Real-World Case Study: resend.com
+
+Here is an example crawl performed on **[https://resend.com](https://resend.com)** with depth 2 and page limit 25:
+
+- **Full Test Repository:** [greenman9909-cmd/resend-test-sitemap-x](https://github.com/greenman9909-cmd/resend-test-sitemap-x)
+- **Discovered Technology:** Next.js (0.98), Vercel (0.99), Stripe (0.97), CloudFront (0.95), GA4 (0.94), Rollbar (0.92)
+- **Endpoints Discovered (266 mapped):**
+  - `https://resend.com/api/trpc/support.contactUs`
+  - `https://resend.com/api/trpc/support.enterpriseForm`
+  - `https://resend.com/api/trpc/marketing.submitStartupApplication`
+  - `https://resend.com/api/trpc/careers.applyToJobPosting`
+  - `https://resend.com/api/migrate/convert`
+  - `https://resend.com/auth/reset-password`
+
+---
 
 ## Core capabilities
 
