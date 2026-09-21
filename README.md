@@ -6,6 +6,7 @@
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![PySide6](https://img.shields.io/badge/GUI-PySide6-41CD52?logo=qt&logoColor=white)](https://doc.qt.io/qtforpython-6/)
+[![CI](https://github.com/greenman9909-cmd/SiteMap-X_Owais/actions/workflows/ci.yml/badge.svg)](https://github.com/greenman9909-cmd/SiteMap-X_Owais/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Support on Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Owais-FF5E5B?logo=kofi&logoColor=white)](https://ko-fi.com/yorusayano)
 
