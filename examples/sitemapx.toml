@@ -1,0 +1,18 @@
+[sitemapx]
+out = "./crawl-output"
+depth = 7
+concurrency = 12
+rate = 20
+per_host_rate = 5
+max_pages = 25000
+scope = "same-host"
+http2 = false
+robots = true
+render = false
+screenshots = false
+openapi_probe = true
+graphql_introspect = false
+rewrite_js = false
+output_format = ["html", "json", "md", "txt"]
+include_regex = ["^https://example\\.com/"]
+exclude_regex = ["/logout(?:\\?|$)"]
