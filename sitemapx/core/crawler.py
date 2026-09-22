@@ -20,7 +20,7 @@ from ..parse.html_extract import extract_html
 from ..parse.js_extract import extract_js
 from ..parse.manifest import extract_manifest
 from ..parse.robots import RobotsInfo, parse_robots, robots_allows
-from ..parse.sitemap import parse_sitemap
+from ..parse.sitemap import looks_like_sitemap, parse_sitemap, sitemap_kind
 from ..parse.sourcemap import extract_sourcemap
 from ..render.playwright_engine import PlaywrightEngine
 from ..store.sqlite_store import SQLiteStore
@@ -68,6 +68,7 @@ class Crawler:
         self._exclude = [re.compile(x) for x in config.exclude_regex]
         self.dns_checked: set[str] = set()
         self.sourcemap_sources: set[str] = set()
+        self.visited_sitemaps: set[str] = set()
 
     def emit(self, kind: str, **data: Any) -> None:
         payload = {"kind": kind, **data}
@@ -262,11 +263,34 @@ class Crawler:
         if result.status and result.status >= 400:
             return
         ctype = result.content_type
-        textish = any(x in ctype for x in ("html", "css", "javascript", "json", "xml", "text")) or Path(urlsplit(result.final_url).path).suffix.lower() in {".js", ".css", ".map", ".json", ".xml", ".txt"}
+        textish = any(x in ctype for x in ("html", "css", "javascript", "json", "xml", "text")) or Path(urlsplit(result.final_url).path).suffix.lower() in {".js", ".css", ".map", ".json", ".xml", ".xml.gz", ".txt"}
         text = result.text if textish else ""
         self.mirror.register(result.final_url, ctype)
         self.mirror.stage(result.final_url, ctype, result.body, text)
-        if "html" in ctype:
+        if looks_like_sitemap(item.url, ctype, result.body):
+            await self.store.save_asset(url_id, result.body, ctype or "application/xml")
+            sitemap_url = normalize_url(result.final_url)
+            if sitemap_url in self.visited_sitemaps:
+                self.emit("log", level="INFO", message=f"sitemap skipped: {result.final_url} (already visited)")
+                return
+            self.visited_sitemaps.add(sitemap_url)
+            kind = sitemap_kind(result.body)
+            urls, maps = parse_sitemap(result.body, result.final_url)
+            if kind is None:
+                return
+            discovered = urls + maps
+            self.emit("log", level="INFO", message=f"sitemap parsed: {result.final_url} → {len(discovered)} urls ({kind})")
+            targets = maps if kind == "index" else urls
+            for target in targets:
+                normalized_target = normalize_url(target)
+                if not normalized_target or not in_scope(self.seed, normalized_target, self.config.scope):
+                    self.emit("log", level="INFO", message=f"sitemap blocked: {target} (scope filter)")
+                    continue
+                if kind == "index" and item.depth >= 2:
+                    continue
+                source = "sitemap-index" if kind == "index" else "sitemap-urlset"
+                await self.enqueue(normalized_target, item.depth + 1, source)
+        elif "html" in ctype:
             parsed = extract_html(text, result.final_url)
             if not parsed.noindex:
                 await self.store.save_page(url_id, text, parsed.title, parsed.lang)
@@ -321,11 +345,6 @@ class Crawler:
                 await self.store.add_endpoint(u, "GET", "sourcemap:source", result.final_url, .45, classify_url(u))
             for u in urls:
                 await self._discover(u, item.depth + 1, "sourcemap:url", result.final_url, auth_attached)
-        elif "xml" in ctype or result.final_url.lower().endswith(".xml"):
-            await self.store.save_asset(url_id, result.body, ctype)
-            urls, maps = parse_sitemap(text, result.final_url)
-            for u in urls + maps:
-                await self.enqueue(u, item.depth + 1, "sitemap")
         elif "json" in ctype or result.final_url.lower().endswith((".json", ".webmanifest")):
             await self.store.save_asset(url_id, result.body, ctype)
             for u, source in extract_manifest(text, result.final_url):
